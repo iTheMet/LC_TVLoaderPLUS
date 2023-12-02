@@ -2,7 +2,6 @@
 
 using System.Collections.Generic;
 using System.IO;
-using System.Linq;
 
 namespace TVLoader.Utils
 {
@@ -15,10 +14,14 @@ namespace TVLoader.Utils
 			var plugins = Directory.GetDirectories(Paths.PluginPath);
 			foreach (var plugin in plugins)
 			{
-				string videoPath = Path.Combine(Paths.PluginPath, plugin, "Television Videos");
+				string videoPath = Path.Combine(Paths.PluginPath, plugin, "Media", "Television Videos");
 				if (!Directory.Exists(videoPath)) continue;
-				Videos.AddRange(Directory.GetFiles(videoPath, "*.mp4"));
+				var videos = Directory.GetFiles(videoPath, "*.mp4");
+				Videos.AddRange(videos);
+				TVLoaderPlugin.Log.LogInfo($"{plugin} has {videos.Length} videos.");
 			}
+
+			TVLoaderPlugin.Log.LogInfo($"Loaded {Videos.Count} total.");
 		}
 	}
 }

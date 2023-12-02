@@ -24,7 +24,7 @@ namespace TVLoader
 
 			Harmony.PatchAll();
 			VideoManager.Load();
-			Logger.LogInfo($"PluginName: {PluginName}, VersionString: {VersionString} is loaded. {Paths.PatcherPluginPath}");
+			Logger.LogInfo($"PluginName: {PluginName}, VersionString: {VersionString} is loaded. Video Count: ${VideoManager.Videos.Count}");
 		}
 
 	}
