@@ -14,7 +14,7 @@ namespace TVLoader.Utils
 			var plugins = Directory.GetDirectories(Paths.PluginPath);
 			foreach (var plugin in plugins)
 			{
-				string videoPath = Path.Combine(Paths.PluginPath, plugin, "Media", "Television Videos");
+				string videoPath = Path.Combine(Paths.PluginPath, plugin, "Television Videos");
 				if (!Directory.Exists(videoPath)) continue;
 				var videos = Directory.GetFiles(videoPath, "*.mp4");
 				Videos.AddRange(videos);
