@@ -12,7 +12,7 @@ namespace TVLoader
 	{
 		private const string MyGUID = "rattenbonkers.TVLoader";
 		private const string PluginName = "TVLoader";
-		private const string VersionString = "1.0.0";
+		private const string VersionString = "1.0.3";
 
 		private static readonly Harmony Harmony = new Harmony(MyGUID);
 		public static ManualLogSource Log = new ManualLogSource(PluginName);
