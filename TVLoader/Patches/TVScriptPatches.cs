@@ -1,4 +1,4 @@
-﻿using HarmonyLib;
+using HarmonyLib;
 
 using System.Reflection;
 
@@ -81,16 +81,20 @@ namespace TVLoader.Patches
 		{
 			if (VideoManager.Videos.Count == 0) return false;
 
-			if (__instance.video.source != VideoSource.Url)
+			// Skip to the next video if this is not our first time turning on the TV
+			if (on && __instance.video.source == VideoSource.Url)
 			{
-				__instance.video.clip = null;
-				__instance.tvSFX.clip = null;
+				int currentClip = (int)currentClipProperty.GetValue(__instance);
+				currentClip = (currentClip + 1) % VideoManager.Videos.Count;
+
+				currentTimeProperty.SetValue(__instance, 0f);
+				currentClipProperty.SetValue(__instance, currentClip);
 			}
 
 			__instance.tvOn = on;
 			if (on)
 			{
-				PlayNextVideo(__instance);
+				PlayVideo(__instance);
 				__instance.tvSFX.PlayOneShot(__instance.switchTVOn);
 				WalkieTalkie.TransmitOneShotAudio(__instance.tvSFX, __instance.switchTVOn);
 			}
@@ -109,23 +113,27 @@ namespace TVLoader.Patches
 		[HarmonyPrefix]
 		public static bool TVFinishedClip(TVScript __instance, VideoPlayer source)
 		{
-			PlayNextVideo(__instance);
+			// Skip to the next video
+			TVLoaderPlugin.Log.LogInfo("TVFinishedClip");
+			int currentClip = (int)currentClipProperty.GetValue(__instance);
+			currentClip = (currentClip + 1) % VideoManager.Videos.Count;
+
+			currentTimeProperty.SetValue(__instance, 0f);
+			currentClipProperty.SetValue(__instance, currentClip);
+
+			// Play it
+			PlayVideo(__instance);
 			return false;
 		}
 
-		private static void PlayNextVideo(TVScript instance)
+		private static void PlayVideo(TVScript instance)
 		{
 			if (VideoManager.Videos.Count == 0) return;
-
-			TVLoaderPlugin.Log.LogInfo($"Playing next video...");
 			int currentClip = (int)currentClipProperty.GetValue(instance);
-			currentClip = (currentClip + 1) % VideoManager.Videos.Count;
-			TVLoaderPlugin.Log.LogInfo($"currentClip: {currentClip} - {VideoManager.Videos[currentClip]}");
-
-			currentTimeProperty.SetValue(instance, 0f);
-			currentClipProperty.SetValue(instance, currentClip);
 
 			instance.tvSFX.time = 0f;
+			instance.video.time = 0f;
+			currentTimeProperty.SetValue(instance, 0f);
 
 			instance.video.url = $"file://{VideoManager.Videos[currentClip]}";
 			instance.video.source = VideoSource.Url;
@@ -134,8 +142,6 @@ namespace TVLoader.Patches
 			instance.video.SetTargetAudioSource(0, instance.tvSFX);
 
 			instance.video.Play();
-
-			instance.SyncTVServerRpc();
 		}
 
 	}
