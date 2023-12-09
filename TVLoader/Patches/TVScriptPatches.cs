@@ -17,43 +17,67 @@ namespace TVLoader.Patches
 	{
 		private static FieldInfo currentClipProperty = typeof(TVScript).GetField("currentClip", BindingFlags.NonPublic | BindingFlags.Instance);
 		private static FieldInfo currentTimeProperty = typeof(TVScript).GetField("currentClipTime", BindingFlags.NonPublic | BindingFlags.Instance);
-		private static FieldInfo wasLastFrameProp = typeof(TVScript).GetField("wasTvOnLastFrame", BindingFlags.NonPublic | BindingFlags.Instance);
+		private static FieldInfo wasTvOnLastFrameProp = typeof(TVScript).GetField("wasTvOnLastFrame", BindingFlags.NonPublic | BindingFlags.Instance);
 		private static FieldInfo timeSinceTurningOffTVProp = typeof(TVScript).GetField("timeSinceTurningOffTV", BindingFlags.NonPublic | BindingFlags.Instance);
-		private static MethodInfo setMatProperty = typeof(TVScript).GetMethod("SetTVScreenMaterial", BindingFlags.NonPublic | BindingFlags.Instance);
+		private static MethodInfo setMatMethod = typeof(TVScript).GetMethod("SetTVScreenMaterial", BindingFlags.NonPublic | BindingFlags.Instance);
+		private static MethodInfo onEnableMethod = typeof(TVScript).GetMethod("OnEnable", BindingFlags.NonPublic | BindingFlags.Instance);
 
-		[HarmonyPatch(typeof(TVScript), "Update")]
+		private static bool tvHasPlayedBefore = false;
+
+		private static RenderTexture renderTexture;
+
+		private static VideoPlayer currentVideoPlayer; // Current playing video
+		private static VideoPlayer nextVideoPlayer; // Next video to play, prepared for better experience.
+
 		[HarmonyPrefix]
+		[HarmonyPatch("Update")]
 		public static bool Update(TVScript __instance)
 		{
+			if (currentVideoPlayer == null)
+			{ // Basically firstRun
+				currentVideoPlayer = __instance.GetComponent<VideoPlayer>();
+				renderTexture = currentVideoPlayer.targetTexture;
+
+				if (VideoManager.Videos.Count > 0)
+					PrepareVideo(__instance, 0);
+			}
+
+			// Original game code, modified slightly to avoid crashes.
 			if (NetworkManager.Singleton.ShutdownInProgress || GameNetworkManager.Instance.localPlayerController == null)
 				return false;
 
+			bool wasTvOnLastFrame = (bool)wasTvOnLastFrameProp.GetValue(__instance);
 			if (!__instance.tvOn || GameNetworkManager.Instance.localPlayerController.isInsideFactory)
 			{
-				if ((bool)wasLastFrameProp.GetValue(__instance))
+				if (wasTvOnLastFrame)
 				{
-					wasLastFrameProp.SetValue(__instance, false);
-					setMatProperty.Invoke(__instance, new object[] { false });
+					wasTvOnLastFrameProp.SetValue(__instance, false);
+					setMatMethod.Invoke(__instance, new object[] { false });
 					currentTimeProperty.SetValue(__instance, (float)__instance.video.time);
 					__instance.video.Stop();
 				}
+
 				if (__instance.IsServer && !__instance.tvOn)
 				{
 					float timeSince = (float)timeSinceTurningOffTVProp.GetValue(__instance);
 					timeSinceTurningOffTVProp.SetValue(__instance, timeSince + Time.deltaTime);
 				}
 				float curTime = (float)currentTimeProperty.GetValue(__instance);
-				curTime += Time.deltaTime;
-				currentTimeProperty.SetValue(__instance, curTime);
+				currentTimeProperty.SetValue(__instance, curTime + Time.deltaTime);
 			}
 			else
 			{
-				if (!(bool)wasLastFrameProp.GetValue(__instance))
+				// TV is on & we're not in the factory
+				if (!wasTvOnLastFrame)
 				{
-					wasLastFrameProp.SetValue(__instance, true);
-					setMatProperty.Invoke(__instance, new object[] { true });
-					__instance.video.url = $"file://{VideoManager.Videos[(int)currentClipProperty.GetValue(__instance)]}";
-					__instance.video.time = (float)currentTimeProperty.GetValue(__instance); ;
+					wasTvOnLastFrameProp.SetValue(__instance, true);
+					setMatMethod.Invoke(__instance, new object[] { true });
+
+					var clipIndex = (int)currentClipProperty.GetValue(__instance);
+
+					__instance.video.url = $"file://{VideoManager.Videos[clipIndex]}";
+					__instance.video.time = (float)currentTimeProperty.GetValue(__instance);
+
 					__instance.video.Play();
 				}
 				currentTimeProperty.SetValue(__instance, (float)__instance.video.time);
@@ -61,19 +85,19 @@ namespace TVLoader.Patches
 			return false;
 		}
 
-		[HarmonyPatch(typeof(TVScript), "TurnTVOnOff")]
 		[HarmonyPrefix]
+		[HarmonyPatch("TurnTVOnOff")]
 		public static bool TurnTVOnOff(TVScript __instance, bool on)
 		{
+			TVLoaderPlugin.Log.LogInfo($"TVOnOff: {on}");
 			if (VideoManager.Videos.Count == 0) return false;
 
-			// Skip to the next video if this is not our first time turning on the TV
-			if (on && __instance.video.source == VideoSource.Url)
-			{
-				int currentClip = (int)currentClipProperty.GetValue(__instance);
-				currentClip = (currentClip + 1) % VideoManager.Videos.Count;
+			int currentClip = (int)currentClipProperty.GetValue(__instance);
 
-				currentTimeProperty.SetValue(__instance, 0f);
+			// Skip to the next video if this is not our first time turning on the TV
+			if (on && tvHasPlayedBefore)
+			{
+				currentClip = (currentClip + 1) % VideoManager.Videos.Count;
 				currentClipProperty.SetValue(__instance, currentClip);
 			}
 
@@ -91,18 +115,23 @@ namespace TVLoader.Patches
 				WalkieTalkie.TransmitOneShotAudio(__instance.tvSFX, __instance.switchTVOff);
 			}
 
-			setMatProperty.Invoke(__instance, new object[] { on });
+			setMatMethod.Invoke(__instance, new object[] { on });
 			return false;
 		}
 
-		[HarmonyPatch(typeof(TVScript), "TVFinishedClip")]
 		[HarmonyPrefix]
+		[HarmonyPatch("TVFinishedClip")]
 		public static bool TVFinishedClip(TVScript __instance, VideoPlayer source)
 		{
+			// Don't bother with TV stuff if it's off or we're in the factory
+			if (!__instance.tvOn || GameNetworkManager.Instance.localPlayerController.isInsideFactory)
+				return false;
+
 			// Skip to the next video
 			TVLoaderPlugin.Log.LogInfo("TVFinishedClip");
 			int currentClip = (int)currentClipProperty.GetValue(__instance);
-			currentClip = (currentClip + 1) % VideoManager.Videos.Count;
+			if (VideoManager.Videos.Count > 0)
+				currentClip = (currentClip + 1) % VideoManager.Videos.Count;
 
 			currentTimeProperty.SetValue(__instance, 0f);
 			currentClipProperty.SetValue(__instance, currentClip);
@@ -112,22 +141,56 @@ namespace TVLoader.Patches
 			return false;
 		}
 
+		private static void PrepareVideo(TVScript instance, int index = -1)
+		{
+			if (index == -1)
+			{
+				int currentClip = (int)currentClipProperty.GetValue(instance);
+				index = currentClip + 1;
+			}
+
+			if (nextVideoPlayer != null && nextVideoPlayer.gameObject.activeInHierarchy)
+				GameObject.Destroy(nextVideoPlayer);
+
+			// Also prepare the next video
+			nextVideoPlayer = instance.gameObject.AddComponent<VideoPlayer>();
+			nextVideoPlayer.playOnAwake = false;
+			nextVideoPlayer.isLooping = false;
+			nextVideoPlayer.source = VideoSource.Url;
+			nextVideoPlayer.controlledAudioTrackCount = 1;
+			nextVideoPlayer.audioOutputMode = VideoAudioOutputMode.AudioSource;
+			nextVideoPlayer.SetTargetAudioSource(0, instance.tvSFX);
+			nextVideoPlayer.url = $"file://{VideoManager.Videos[(index) % VideoManager.Videos.Count]}";
+			nextVideoPlayer.Prepare();
+			nextVideoPlayer.prepareCompleted += (VideoPlayer source) => { TVLoaderPlugin.Log.LogInfo("Prepared next video!"); };
+		}
+
 		private static void PlayVideo(TVScript instance)
 		{
+			tvHasPlayedBefore = true;
 			if (VideoManager.Videos.Count == 0) return;
-			int currentClip = (int)currentClipProperty.GetValue(instance);
 
-			instance.tvSFX.time = 0f;
-			instance.video.time = 0f;
+			// If the next video is prepared, switch out the videoPlayer
+			if (nextVideoPlayer != null)
+			{
+				var deleteMe = currentVideoPlayer;
+
+				instance.video = currentVideoPlayer = nextVideoPlayer;
+				nextVideoPlayer = null;
+
+				TVLoaderPlugin.Log.LogInfo($"Destroy {deleteMe}");
+				GameObject.Destroy(deleteMe);
+
+				// Add the EventHandler again
+				onEnableMethod.Invoke(instance, new object[] { });
+			}
+
 			currentTimeProperty.SetValue(instance, 0f);
-
-			instance.video.url = $"file://{VideoManager.Videos[currentClip]}";
-			instance.video.source = VideoSource.Url;
-			instance.video.controlledAudioTrackCount = 1;
-			instance.video.audioOutputMode = VideoAudioOutputMode.AudioSource;
-			instance.video.SetTargetAudioSource(0, instance.tvSFX);
-
+			
+			instance.video.targetTexture = renderTexture;
 			instance.video.Play();
+
+			PrepareVideo(instance);
 		}
 
 	}

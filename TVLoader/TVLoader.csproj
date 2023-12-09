@@ -34,11 +34,13 @@
     <Reference Include="0Harmony">
       <HintPath>..\..\..\..\AppData\Roaming\Thunderstore Mod Manager\DataFolder\LethalCompany\cache\BepInEx-BepInExPack\5.4.2100\BepInExPack\BepInEx\core\0Harmony.dll</HintPath>
     </Reference>
-    <Reference Include="Assembly-CSharp-firstpass-publicized">
-      <HintPath>..\..\..\..\..\..\Program Files (x86)\Steam\steamapps\common\Lethal Company\Lethal Company_Data\Managed\Assembly-CSharp-firstpass-publicized.dll</HintPath>
+    <Reference Include="Assembly-CSharp-firstpass-publicized, Version=0.0.0.0, Culture=neutral, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>reference\Assembly-CSharp-firstpass-publicized.dll</HintPath>
     </Reference>
-    <Reference Include="Assembly-CSharp-publicized">
-      <HintPath>..\..\..\..\..\..\Program Files (x86)\Steam\steamapps\common\Lethal Company\Lethal Company_Data\Managed\Assembly-CSharp-publicized.dll</HintPath>
+    <Reference Include="Assembly-CSharp-publicized, Version=0.0.0.0, Culture=neutral, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>reference\Assembly-CSharp-publicized.dll</HintPath>
     </Reference>
     <Reference Include="BepInEx">
       <HintPath>..\..\..\..\AppData\Roaming\Thunderstore Mod Manager\DataFolder\LethalCompany\cache\BepInEx-BepInExPack\5.4.2100\BepInExPack\BepInEx\core\BepInEx.dll</HintPath>
@@ -78,7 +80,7 @@
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <PropertyGroup>
-    <PostBuildEvent>mkdir "C:\Users\theev\AppData\Roaming\Thunderstore Mod Manager\DataFolder\LethalCompany\profiles\Default\BepInEx\plugins\$(TargetName)"
-xcopy /q/y/i "$(TargetPath)" "C:\Users\theev\AppData\Roaming\Thunderstore Mod Manager\DataFolder\LethalCompany\profiles\Default\BepInEx\plugins\$(TargetName)" /E /H /C</PostBuildEvent>
+    <PostBuildEvent>mkdir "C:\Program Files (x86)\Steam\steamapps\common\Lethal Company\BepInEx\plugins\$(TargetName)"
+xcopy /q/y/i "$(TargetPath)" "C:\Program Files (x86)\Steam\steamapps\common\Lethal Company\BepInEx\plugins\$(TargetName)" /E /H /C</PostBuildEvent>
   </PropertyGroup>
 </Project>

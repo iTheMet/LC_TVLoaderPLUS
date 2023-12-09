@@ -1,3 +1,9 @@
+## Version 1.1.0
+
+- Reimplement original game code
+- Fix audio on first video not playing
+- Prepare next video while current video is playing
+
 ## Version 1.0.3
 
 - Also load videos from `Lethal Company\BepInEx\plugins\Television Videos`
