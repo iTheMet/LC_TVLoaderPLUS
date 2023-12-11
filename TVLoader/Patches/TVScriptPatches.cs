@@ -42,46 +42,6 @@ namespace TVLoader.Patches
 					PrepareVideo(__instance, 0);
 			}
 
-			// Original game code, modified slightly to avoid crashes.
-			if (NetworkManager.Singleton.ShutdownInProgress || GameNetworkManager.Instance.localPlayerController == null)
-				return false;
-
-			bool wasTvOnLastFrame = (bool)wasTvOnLastFrameProp.GetValue(__instance);
-			if (!__instance.tvOn || GameNetworkManager.Instance.localPlayerController.isInsideFactory)
-			{
-				if (wasTvOnLastFrame)
-				{
-					wasTvOnLastFrameProp.SetValue(__instance, false);
-					setMatMethod.Invoke(__instance, new object[] { false });
-					currentTimeProperty.SetValue(__instance, (float)__instance.video.time);
-					__instance.video.Stop();
-				}
-
-				if (__instance.IsServer && !__instance.tvOn)
-				{
-					float timeSince = (float)timeSinceTurningOffTVProp.GetValue(__instance);
-					timeSinceTurningOffTVProp.SetValue(__instance, timeSince + Time.deltaTime);
-				}
-				float curTime = (float)currentTimeProperty.GetValue(__instance);
-				currentTimeProperty.SetValue(__instance, curTime + Time.deltaTime);
-			}
-			else
-			{
-				// TV is on & we're not in the factory
-				if (!wasTvOnLastFrame)
-				{
-					wasTvOnLastFrameProp.SetValue(__instance, true);
-					setMatMethod.Invoke(__instance, new object[] { true });
-
-					var clipIndex = (int)currentClipProperty.GetValue(__instance);
-
-					__instance.video.url = $"file://{VideoManager.Videos[clipIndex]}";
-					__instance.video.time = (float)currentTimeProperty.GetValue(__instance);
-
-					__instance.video.Play();
-				}
-				currentTimeProperty.SetValue(__instance, (float)__instance.video.time);
-			}
 			return false;
 		}
 
@@ -186,7 +146,7 @@ namespace TVLoader.Patches
 			}
 
 			currentTimeProperty.SetValue(instance, 0f);
-			
+
 			instance.video.targetTexture = renderTexture;
 			instance.video.Play();
 

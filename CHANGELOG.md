@@ -1,3 +1,7 @@
+## Version 1.1.1
+
+- Fix video restarting when exiting inside environments.
+
 ## Version 1.1.0
 
 - Reimplement original game code
