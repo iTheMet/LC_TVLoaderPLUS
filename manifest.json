@@ -1,6 +1,6 @@
 {
     "name": "TVLoader",
-    "version_number": "1.1.0",
+    "version_number": "1.1.1",
     "website_url": "https://github.com/RattenBonkers",
     "description": "Allows players to add custom videos to the Television.",
     "dependencies": [
