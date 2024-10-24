@@ -3,7 +3,7 @@
 Allows players to add custom videos to the Television.
 
 ## TV Pack Creator
-You can easily create your own TV content pack by using the TV Pack Creator. It can be found [here](https://docs.theevilsocks.com/TVLoader-Creator/).
+You can easily create your own TV content pack by using the TV Pack Creator. It can be found [here](https://tvloader.theevilsocks.com/).
 
 ## Adding Videos
 

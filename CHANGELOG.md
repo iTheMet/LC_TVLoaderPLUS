@@ -1,3 +1,7 @@
+## Version 1.1.2
+
+- Potentially fix video lag on some machines
+
 ## Version 1.1.1
 
 - Fix video restarting when exiting inside environments.

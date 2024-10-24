@@ -49,6 +49,7 @@ namespace TVLoader.Patches
 		[HarmonyPatch("TurnTVOnOff")]
 		public static bool TurnTVOnOff(TVScript __instance, bool on)
 		{
+			TVLoaderPlugin.Log.LogInfo($"VideoPlayer Resolution: {currentVideoPlayer.targetTexture.width}x{currentVideoPlayer.targetTexture.height}");
 			TVLoaderPlugin.Log.LogInfo($"TVOnOff: {on}");
 			if (VideoManager.Videos.Count == 0) return false;
 
@@ -83,7 +84,7 @@ namespace TVLoader.Patches
 		[HarmonyPatch("TVFinishedClip")]
 		public static bool TVFinishedClip(TVScript __instance, VideoPlayer source)
 		{
-			// Don't bother with TV stuff if it's off or we're in the factory
+			// Don't bother with TV stuff if it's off or we're inside
 			if (!__instance.tvOn || GameNetworkManager.Instance.localPlayerController.isInsideFactory)
 				return false;
 
@@ -121,6 +122,7 @@ namespace TVLoader.Patches
 			nextVideoPlayer.audioOutputMode = VideoAudioOutputMode.AudioSource;
 			nextVideoPlayer.SetTargetAudioSource(0, instance.tvSFX);
 			nextVideoPlayer.url = $"file://{VideoManager.Videos[(index) % VideoManager.Videos.Count]}";
+			nextVideoPlayer.skipOnDrop = true;
 			nextVideoPlayer.Prepare();
 			nextVideoPlayer.prepareCompleted += (VideoPlayer source) => { TVLoaderPlugin.Log.LogInfo("Prepared next video!"); };
 		}
