@@ -23,10 +23,6 @@ namespace TVLoader.Patches
 		private static MethodInfo setMatMethod = typeof(TVScript).GetMethod("SetTVScreenMaterial", BindingFlags.NonPublic | BindingFlags.Instance);
 		private static MethodInfo onEnableMethod = typeof(TVScript).GetMethod("OnEnable", BindingFlags.NonPublic | BindingFlags.Instance);
 
-        private static bool UseShufflePlayback = true;
-        private static List<int> shuffledIndices = new List<int>();
-        private static int currentShuffledIndex = 0;
-
         private static bool tvHasPlayedBefore = false;
 
 		private static RenderTexture renderTexture;
@@ -34,7 +30,12 @@ namespace TVLoader.Patches
 		private static VideoPlayer currentVideoPlayer; // Current playing video
 		private static VideoPlayer nextVideoPlayer; // Next video to play, prepared for better experience.
 
-		[HarmonyPrefix]
+        private static bool UseShufflePlayback = true;
+
+        private static List<int> shuffledIndices = new List<int>();
+        private static int currentShuffledIndex = 0;
+
+        [HarmonyPrefix]
 		[HarmonyPatch("Update")]
 		public static bool Update(TVScript __instance)
 		{
@@ -197,5 +198,27 @@ namespace TVLoader.Patches
             TVLoaderPlugin.Log.LogInfo("Shuffled video list.");
         }
 
+        [HarmonyPatch(typeof(TVScript), "Update")]
+        [HarmonyPostfix]
+        private static void UpdatePatch(TVScript __instance)
+        {
+            if (GameNetworkManager.Instance.localPlayerController == null)
+                return;
+
+            // Расстояние до ТВ
+            float dist = Vector3.Distance(GameNetworkManager.Instance.localPlayerController.transform.position, __instance.transform.position);
+
+            if (dist < 3.5f) // Примерное расстояние активации (можешь подкорректировать)
+            {
+                if (Input.GetKeyDown(KeyCode.R))
+                {
+                    UseShufflePlayback = !UseShufflePlayback;
+                    TVLoaderPlugin.Log.LogInfo($"Shuffle Mode is now {(UseShufflePlayback ? "ENABLED" : "DISABLED")}");
+                }
+
+                string status = UseShufflePlayback ? "Disable ShuffleMode: [R]" : "Enable ShuffleMode: [R]";
+                HUDManager.Instance.DisplayTip("TV Loader", status, false, false, "LC_TVLoaderPLUS");
+            }
+        }
     }
 }
