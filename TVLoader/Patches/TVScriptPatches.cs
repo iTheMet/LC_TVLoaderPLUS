@@ -1,5 +1,6 @@
 ﻿using HarmonyLib;
-
+using System.Collections.Generic;
+using System.Linq;
 using System.Reflection;
 
 using TVLoader.Utils;
@@ -22,7 +23,11 @@ namespace TVLoader.Patches
 		private static MethodInfo setMatMethod = typeof(TVScript).GetMethod("SetTVScreenMaterial", BindingFlags.NonPublic | BindingFlags.Instance);
 		private static MethodInfo onEnableMethod = typeof(TVScript).GetMethod("OnEnable", BindingFlags.NonPublic | BindingFlags.Instance);
 
-		private static bool tvHasPlayedBefore = false;
+        private static bool UseShufflePlayback = true;
+        private static List<int> shuffledIndices = new List<int>();
+        private static int currentShuffledIndex = 0;
+
+        private static bool tvHasPlayedBefore = false;
 
 		private static RenderTexture renderTexture;
 
@@ -40,7 +45,12 @@ namespace TVLoader.Patches
 
 				if (VideoManager.Videos.Count > 0)
 					PrepareVideo(__instance, 0);
-			}
+
+                if (UseShufflePlayback)
+                {
+                    ShuffleVideos();
+                }
+            }
 
 			return false;
 		}
@@ -55,14 +65,25 @@ namespace TVLoader.Patches
 
 			int currentClip = (int)currentClipProperty.GetValue(__instance);
 
-			// Skip to the next video if this is not our first time turning on the TV
-			if (on && tvHasPlayedBefore)
-			{
-				currentClip = (currentClip + 1) % VideoManager.Videos.Count;
-				currentClipProperty.SetValue(__instance, currentClip);
-			}
+            // Skip to the next video if this is not our first time turning on the TV
+            if (on && tvHasPlayedBefore)
+            {
+                if (UseShufflePlayback)
+                {
+                    if (currentShuffledIndex >= shuffledIndices.Count)
+                        ShuffleVideos();
 
-			__instance.tvOn = on;
+                    currentClip = shuffledIndices[currentShuffledIndex++];
+                }
+                else
+                {
+                    currentClip = (currentClip + 1) % VideoManager.Videos.Count;
+                }
+
+                currentClipProperty.SetValue(__instance, currentClip);
+            }
+
+            __instance.tvOn = on;
 			if (on)
 			{
 				PlayVideo(__instance);
@@ -92,7 +113,19 @@ namespace TVLoader.Patches
 			TVLoaderPlugin.Log.LogInfo("TVFinishedClip");
 			int currentClip = (int)currentClipProperty.GetValue(__instance);
 			if (VideoManager.Videos.Count > 0)
-				currentClip = (currentClip + 1) % VideoManager.Videos.Count;
+			{
+                if (UseShufflePlayback)
+                {
+                    if (currentShuffledIndex >= shuffledIndices.Count)
+                        ShuffleVideos();
+
+                    currentClip = shuffledIndices[currentShuffledIndex++];
+                }
+                else
+                {
+                    currentClip = (currentClip + 1) % VideoManager.Videos.Count;
+                }
+            }
 
 			currentTimeProperty.SetValue(__instance, 0f);
 			currentClipProperty.SetValue(__instance, currentClip);
@@ -155,5 +188,14 @@ namespace TVLoader.Patches
 			PrepareVideo(instance);
 		}
 
-	}
+        private static void ShuffleVideos()
+        {
+            shuffledIndices = Enumerable.Range(0, VideoManager.Videos.Count)
+                                        .OrderBy(x => Random.value)
+                                        .ToList();
+            currentShuffledIndex = 0;
+            TVLoaderPlugin.Log.LogInfo("Shuffled video list.");
+        }
+
+    }
 }
