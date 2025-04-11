@@ -10,8 +10,8 @@ namespace TVLoader
 	[BepInPlugin(MyGUID, PluginName, VersionString)]
 	public class TVLoaderPlugin : BaseUnityPlugin
 	{
-		private const string MyGUID = "e59815a7-f2f7-4416-9a61-ca1939ce6e2d";
-		private const string PluginName = "LC_TVLoaderPLUS";
+		private const string MyGUID = "1d73cf4f-bcef-4ad8-a60f-c46d7d93ceeb";
+		private const string PluginName = "TVLoaderPLUS";
 		private const string VersionString = "1.0.0";
 
 		private static readonly Harmony Harmony = new Harmony(MyGUID);
