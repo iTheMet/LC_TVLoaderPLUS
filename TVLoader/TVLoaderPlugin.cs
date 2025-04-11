@@ -10,7 +10,7 @@ namespace TVLoader
 	[BepInPlugin(MyGUID, PluginName, VersionString)]
 	public class TVLoaderPlugin : BaseUnityPlugin
 	{
-		private const string MyGUID = "iTheMet/LC_TVLoaderPLUS";
+		private const string MyGUID = "e59815a7-f2f7-4416-9a61-ca1939ce6e2d";
 		private const string PluginName = "LC_TVLoaderPLUS";
 		private const string VersionString = "1.0.0";
 

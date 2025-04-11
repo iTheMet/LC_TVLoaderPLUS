@@ -8,7 +8,9 @@ using TVLoader.Utils;
 using Unity.Netcode;
 
 using UnityEngine;
+using UnityEngine.InputSystem;
 using UnityEngine.Video;
+using UnityEngine.Windows;
 
 namespace TVLoader.Patches
 {
@@ -136,32 +138,40 @@ namespace TVLoader.Patches
 			return false;
 		}
 
-		private static void PrepareVideo(TVScript instance, int index = -1)
-		{
-			if (index == -1)
-			{
-				int currentClip = (int)currentClipProperty.GetValue(instance);
-				index = currentClip + 1;
-			}
+        private static void PrepareVideo(TVScript instance, int index = -1)
+        {
+            if (index == -1)
+            {
+                int currentClip = (int)currentClipProperty.GetValue(instance);
+                if (UseShufflePlayback)
+                {
+                    if (currentShuffledIndex >= shuffledIndices.Count)
+                        ShuffleVideos();
+                    index = shuffledIndices[currentShuffledIndex];
+                }
+                else
+                {
+                    index = (currentClip + 1) % VideoManager.Videos.Count;
+                }
+            }
 
-			if (nextVideoPlayer != null && nextVideoPlayer.gameObject.activeInHierarchy)
-				GameObject.Destroy(nextVideoPlayer);
+            if (nextVideoPlayer != null && nextVideoPlayer.gameObject.activeInHierarchy)
+                GameObject.Destroy(nextVideoPlayer);
 
-			// Also prepare the next video
-			nextVideoPlayer = instance.gameObject.AddComponent<VideoPlayer>();
-			nextVideoPlayer.playOnAwake = false;
-			nextVideoPlayer.isLooping = false;
-			nextVideoPlayer.source = VideoSource.Url;
-			nextVideoPlayer.controlledAudioTrackCount = 1;
-			nextVideoPlayer.audioOutputMode = VideoAudioOutputMode.AudioSource;
-			nextVideoPlayer.SetTargetAudioSource(0, instance.tvSFX);
-			nextVideoPlayer.url = $"file://{VideoManager.Videos[(index) % VideoManager.Videos.Count]}";
-			nextVideoPlayer.skipOnDrop = true;
-			nextVideoPlayer.Prepare();
-			nextVideoPlayer.prepareCompleted += (VideoPlayer source) => { TVLoaderPlugin.Log.LogInfo("Prepared next video!"); };
-		}
+            nextVideoPlayer = instance.gameObject.AddComponent<VideoPlayer>();
+            nextVideoPlayer.playOnAwake = false;
+            nextVideoPlayer.isLooping = false;
+            nextVideoPlayer.source = VideoSource.Url;
+            nextVideoPlayer.controlledAudioTrackCount = 1;
+            nextVideoPlayer.audioOutputMode = VideoAudioOutputMode.AudioSource;
+            nextVideoPlayer.SetTargetAudioSource(0, instance.tvSFX);
+            nextVideoPlayer.url = $"file://{VideoManager.Videos[index % VideoManager.Videos.Count]}";
+            nextVideoPlayer.skipOnDrop = true;
+            nextVideoPlayer.Prepare();
+            nextVideoPlayer.prepareCompleted += (VideoPlayer source) => { TVLoaderPlugin.Log.LogInfo("Prepared next video!"); };
+        }
 
-		private static void PlayVideo(TVScript instance)
+        private static void PlayVideo(TVScript instance)
 		{
 			tvHasPlayedBefore = true;
 			if (VideoManager.Videos.Count == 0) return;
@@ -202,22 +212,48 @@ namespace TVLoader.Patches
         [HarmonyPostfix]
         private static void UpdatePatch(TVScript __instance)
         {
-            if (GameNetworkManager.Instance.localPlayerController == null)
-                return;
-
-            // Расстояние до ТВ
-            float dist = Vector3.Distance(GameNetworkManager.Instance.localPlayerController.transform.position, __instance.transform.position);
-
-            if (dist < 3.5f) // Примерное расстояние активации (можешь подкорректировать)
+            if (GameNetworkManager.Instance?.localPlayerController == null ||
+                Keyboard.current == null ||
+                HUDManager.Instance == null)
             {
-                if (Input.GetKeyDown(KeyCode.R))
+                return;
+            }
+
+            float dist = Vector3.Distance(
+                GameNetworkManager.Instance.localPlayerController.transform.position,
+                __instance.transform.position
+            );
+
+            if (dist < 3.5f)
+            {
+                if (Keyboard.current.rKey.wasPressedThisFrame)
                 {
                     UseShufflePlayback = !UseShufflePlayback;
-                    TVLoaderPlugin.Log.LogInfo($"Shuffle Mode is now {(UseShufflePlayback ? "ENABLED" : "DISABLED")}");
+
+                    HUDManager.Instance.DisplayTip(
+                        "TV Loader",
+                        $"Shuffle: {(UseShufflePlayback ? "ON" : "OFF")}",
+                        false
+                    );
                 }
 
-                string status = UseShufflePlayback ? "Disable ShuffleMode: [R]" : "Enable ShuffleMode: [R]";
-                HUDManager.Instance.DisplayTip("TV Loader", status, false, false, "LC_TVLoaderPLUS");
+                var controlTips = HUDManager.Instance.controlTipLines;
+
+                if (!controlTips[1].text.Contains("shuffle"))
+                {
+                    HUDManager.Instance.ChangeControlTipMultiple(new string[]
+                    {
+                "Switch TV: [E]",
+                UseShufflePlayback ? "Disable shuffle: [R]" : "Enable shuffle: [R]"
+                    });
+                }
+            }
+            else
+            {
+                if (HUDManager.Instance.controlTipLines[1].text.Contains("shuffle"))
+                {
+                    HUDManager.Instance.ClearControlTips();
+                }
             }
         }
     }
